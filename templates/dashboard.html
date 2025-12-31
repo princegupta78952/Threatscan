@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex">
+    
+    <div class="sidebar">
+        <h4 class="fw-bold text-primary mb-4 px-2">Threat<span class="text-white">Scan</span></h4>
+        
+        <div class="d-grid gap-2 mb-4">
+            <a href="/dashboard" class="btn btn-primary text-start"><i class="bi bi-link-45deg me-2"></i> Scan URL</a>
+            <a href="/scan-qr" class="btn btn-outline-secondary text-start"><i class="bi bi-qr-code-scan me-2"></i> Scan QR</a>
+        </div>
+
+        <h6 class="text-uppercase text-muted fs-7 px-2 mb-3" style="font-size: 0.75rem; letter-spacing: 1px;">Recent History</h6>
+        
+        <div class="flex-grow-1">
+            {% for item in history %}
+            <a href="#" class="history-item" title="{{ item.url }}">
+                <span class="status-dot {% if item.status == 'SAFE' %}dot-safe{% elif item.status == 'DANGER' %}dot-danger{% else %}dot-warning{% endif %}"></span>
+                {{ item.url }}
+            </a>
+            {% endfor %}
+        </div>
+
+        <div class="mt-auto pt-3 border-top border-secondary">
+            <a href="/logout" class="btn btn-danger w-100 btn-sm"><i class="bi bi-box-arrow-left"></i> Logout</a>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="container-fluid">
+            
+            <div class="row justify-content-center mt-5">
+                <div class="col-md-8">
+                    <h2 class="mb-4 text-center">Scan a URL</h2>
+                    
+                    <div class="card p-4 shadow-lg border-0 mb-5" style="background-color: #161b22;">
+                        <form action="/dashboard" method="POST">
+                            <div class="input-group input-group-lg">
+                                <input type="url" name="url" class="form-control" placeholder="Paste link here..." value="{{ url if url else '' }}" required>
+                                <button class="btn btn-primary px-4" type="submit">Scan</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    {% if report %}
+                    <div class="card border-0 shadow-sm" style="background-color: #0d1117; border: 1px solid #30363d;">
+                        <div class="card-body p-4">
+                            <div class="alert alert-{{ report.color }} d-flex align-items-center" role="alert">
+                                <h4 class="m-0"><i class="bi bi-shield-check me-2"></i> {{ report.message }}</h4>
+                            </div>
+                            
+                            {% if report.status != 'ERROR' %}
+                            <div class="row text-center mt-3">
+                                <div class="col-6">
+                                    <h3 class="text-danger fw-bold">{{ report.malicious_count }}</h3>
+                                    <small class="text-muted">Malicious</small>
+                                </div>
+                                <div class="col-6">
+                                    <h3 class="text-success fw-bold">{{ report.status }}</h3>
+                                    <small class="text-muted">Status</small>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

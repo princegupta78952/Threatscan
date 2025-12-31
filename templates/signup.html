@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center" style="height: 100vh;">
+    <div class="col-md-4">
+        <div class="text-center mb-4">
+            <h1 class="fw-bold text-primary display-4">Threat<span class="text-white">Scan</span></h1>
+            <p class="text-muted">Create your secure account</p>
+        </div>
+        
+        <div class="card p-4 shadow-lg border-0" style="background-color: #161b22;">
+            <h3 class="text-center mb-4 text-white">Sign Up</h3>
+            <form action="/signup" method="POST">
+                <div class="mb-3">
+                    <label class="form-label text-muted">Username</label>
+                    <input type="text" name="username" class="form-control" required>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label text-muted">Password</label>
+                    <input type="password" name="password" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-success w-100 py-2">Create Account</button>
+            </form>
+            <div class="text-center mt-3">
+                <small class="text-muted">Already have an account? <a href="/login" class="text-primary">Login here</a></small>
+            </div>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} mt-3 text-center py-2">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -22,7 +22,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 
-print("⏳ AI Model loading...")
+print(" AI Model loading...")
 try:
     with open('phishing_model.pkl', 'rb') as f:
         model = pickle.load(f)
@@ -30,7 +30,7 @@ try:
         vectorizer = pickle.load(f)
     print(" Model and Vectorizer Ready!")
 except Exception as e:
-    print(f"❌ Error: Model files not found. {e}")
+    print(f" Error: Model files not found. {e}")
     model = None
     vectorizer = None
 

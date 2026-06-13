@@ -1,26 +1,38 @@
 import os
 import base64
-import requests
 import cv2
 import numpy as np
+import pickle
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from dotenv import load_dotenv
+import webbrowser
+from threading import Timer
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY')
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///database.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 
-VT_API_KEY = os.getenv('VIRUSTOTAL_API_KEY')
+print("⏳ AI Model loading...")
+try:
+    with open('phishing_model.pkl', 'rb') as f:
+        model = pickle.load(f)
+    with open('tfidf_vectorizer.pkl', 'rb') as f:
+        vectorizer = pickle.load(f)
+    print(" Model and Vectorizer Ready!")
+except Exception as e:
+    print(f"❌ Error: Model files not found. {e}")
+    model = None
+    vectorizer = None
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -47,31 +59,20 @@ def decode_qr_code(file_stream):
     except:
         return None
 
-def get_virustotal_report(url_to_scan):
-    if not VT_API_KEY:
-        return {"status": "ERROR", "message": "API Key Missing", "color": "dark"}
+def analyze_url_with_ml(url_to_scan):
+    if model is None or vectorizer is None:
+        return {"status": "ERROR", "color": "secondary", "message": "ML Model missing!", "malicious_count": 0}
 
     try:
-        url_id = base64.urlsafe_b64encode(url_to_scan.encode()).decode().strip("=")
-        api_url = f"https://www.virustotal.com/api/v3/urls/{url_id}"
-        headers = {"accept": "application/json", "x-apikey": VT_API_KEY}
+        url_vector = vectorizer.transform([url_to_scan])
+        prediction = model.predict(url_vector)[0]
 
-        response = requests.get(api_url, headers=headers)
-        
-        if response.status_code == 200:
-            stats = response.json()['data']['attributes']['last_analysis_stats']
-            malicious = stats.get('malicious', 0)
-
-            if malicious > 0:
-                return {"status": "DANGER", "color": "danger", "malicious_count": malicious, "message": f"Flagged by {malicious} vendors!"}
-            else:
-                return {"status": "SAFE", "color": "success", "malicious_count": 0, "message": "Clean URL."}
-        elif response.status_code == 404:
-            return {"status": "UNKNOWN", "color": "warning", "message": "URL not found in VirusTotal database."}
+        if prediction == 0:
+            return {"status": "DANGER", "color": "danger", "malicious_count": 1, "message": " Warning: Phishing URL Detected!"}
         else:
-            return {"status": "ERROR", "color": "secondary", "message": "Connection Error"}
-    except:
-        return {"status": "ERROR", "color": "secondary", "message": "Internal Error"}
+            return {"status": "SAFE", "color": "success", "malicious_count": 0, "message": " Verified: Clean URL."}
+    except Exception as e:
+        return {"status": "ERROR", "color": "warning", "message": "Scan Failed", "malicious_count": 0}
 
 @app.route('/')
 def home():
@@ -120,7 +121,7 @@ def dashboard():
     if request.method == 'POST':
         url_to_scan = request.form.get('url')
         if url_to_scan:
-            report = get_virustotal_report(url_to_scan)
+            report = analyze_url_with_ml(url_to_scan)
             new_scan = ScanHistory(url=url_to_scan, status=report['status'], user_id=user_id)
             db.session.add(new_scan)
             db.session.commit()
@@ -144,7 +145,7 @@ def scan_qr():
             
             if decoded_url:
                 url_to_scan = decoded_url
-                report = get_virustotal_report(url_to_scan)
+                report = analyze_url_with_ml(url_to_scan)
                 new_scan = ScanHistory(url=url_to_scan, status=report['status'], user_id=user_id)
                 db.session.add(new_scan)
                 db.session.commit()
@@ -162,5 +163,9 @@ def logout():
 with app.app_context():
     db.create_all()
 
+def open_browser():
+    webbrowser.open_new("http://127.0.0.1:5000")
+
 if __name__ == '__main__':
+    Timer(1, open_browser).start()
     app.run(debug=True)
